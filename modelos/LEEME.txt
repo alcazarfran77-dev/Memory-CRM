@@ -1,0 +1,4 @@
+Aquí van los modelos pre-entrenados (ONNX).
+
+Ejecuta "Descargar modelos" (Windows) o descargar-modelos.sh (macOS/Linux) una vez con internet,
+o simplemente abre la app con internet la primera vez: la descarga se hace sola y queda guardada en el navegador.
