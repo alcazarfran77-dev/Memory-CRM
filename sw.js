@@ -1,7 +1,7 @@
 /* Memoria CRM · service worker: la interfaz abre aunque no haya red.
    Los modelos y el runtime WebAssembly los guarda Transformers.js en su propia
    caché, así que aquí no se duplican. */
-const CACHE = "memoria-crm-app-v3";
+const CACHE = "memoria-crm-app-v4";
 const SHELL = [
   "./", "index.html", "css/app.css", "js/i18n.js", "js/nlp.js", "js/store.js", "js/ia.js", "js/app.js", "js/ia-worker.js",
   "vendor/transformers.min.js", "icon.svg", "manifest.webmanifest",
