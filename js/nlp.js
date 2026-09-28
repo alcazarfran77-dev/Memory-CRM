@@ -120,6 +120,7 @@
       [/\b(?:este |el )?fin de semana\b/g, () => nextWeekday(t0, 6, false)],
       [/\b(?:para |antes de |a )?(?:fin|finales|final) de(?:l)? mes\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 0)],
       [/\b(?:el |para el )?(?:mes que viene|proximo mes|siguiente mes)\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 1)],
+      [/\b(?:en |durante |antes de terminar )?este mes\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 0)],
       [/\b(?:en|dentro de) (\d{1,2}|un par de|una?|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|quince) (dias?|semanas?|mes(?:es)?)\b/g, (m) => {
         const k = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : ES_NUM[m[1]];
         if (!k) return null;
@@ -166,6 +167,7 @@
       [/\b(?:this |over the |by the )?weekend\b/g, () => nextWeekday(t0, 6, false)],
       [/\b(?:by |before |at )?(?:the )?end of (?:the )?month\b|\bby month end\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 0)],
       [/\b(?:by |in )?next month\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 1)],
+      [/\b(?:within |during |by the end of )?this month\b/g, () => new Date(t0.getFullYear(), t0.getMonth() + 1, 0)],
       [/\b(?:in|within) (\d{1,2}|a couple of|a few|an?|one|two|three|four|five|six|seven|eight|nine|ten|fifteen) (days?|weeks?|months?)\b/g, (m) => {
         const k = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : EN_NUM[m[1]];
         if (!k) return null;
@@ -262,6 +264,48 @@
     return TOPICS.filter((t) => [...t.kw.es, ...t.kw.en].some((k) => padded.includes(" " + k))).map((t) => t.id);
   }
 
+
+  /* ---------- verbos a infinitivo (primera palabra de un compromiso) ---------- */
+  const ES_VERB_LIST = ("enviar mandar pasar preparar compartir llamar escribir confirmar revisar agendar cotizar presentar contactar programar buscar conseguir proponer entregar organizar investigar ver checar hacer dar avisar mostrar ayudar visitar actualizar terminar documentar analizar evaluar definir disenar responder resolver leer decidir incluir cerrar coordinar validar aprobar firmar pagar facturar cobrar invitar reservar comprar conectar recomendar sugerir traer llevar subir corregir marcar agregar ajustar calcular cambiar " +
+    "compartir consultar entrevistar explicar gestionar hablar imprimir instalar integrar medir negociar notificar ofrecer planear planificar probar publicar reunir solicitar tramitar verificar").split(" ");
+  const ES_IRREG = { hacer: "hago haga hiciera hare haria haremos", ver: "veo vea viera", dar: "doy de diera", decir: "digo diga dijera dire diria", poner: "pongo ponga pusiera pondre pondria", traer: "traigo traiga trajera", tener: "tengo tenga tuviera tendre tendria", conseguir: "consigo consiga consiguiera", corregir: "corrijo corrija corrigiera", sugerir: "sugiero sugiera sugiriera", resolver: "resuelvo resuelva", incluir: "incluyo incluya incluyera", leer: "leyera", probar: "pruebo pruebe", cerrar: "cierro", medir: "mido mida midiera", ofrecer: "ofrezco ofrezca", conectar: "conecto" };
+  const NOUNISH = new Set(["pagar", "cambiar", "cobrar", "facturar", "cerrar", "planear", "ajustar", "reunir", "probar"]);
+  const ES_FORMS = (() => {
+    const m = {};
+    const add = (f, inf) => { if (f && !m[f]) m[f] = inf; };
+    for (const inf of ES_VERB_LIST) {
+      const stem = inf.slice(0, -2), end = inf.slice(-2);
+      [inf + "e", inf + "emos", inf + "ia", inf + "iamos"].forEach((f) => add(f, inf));
+      if (!NOUNISH.has(inf)) add(stem + "o", inf); // "pago", "cambio", "cobro" suelen ser sustantivos
+      if (end === "ar") {
+        const subj = stem.endsWith("z") ? stem.slice(0, -1) + "c" : stem.endsWith("c") ? stem.slice(0, -1) + "qu" : stem.endsWith("g") ? stem + "u" : stem;
+        [subj + "e", subj + "emos", stem + "ara", stem + "aramos"].forEach((f) => add(f, inf));
+      } else {
+        [stem + "a", stem + "amos", stem + "iera", stem + "ieramos"].forEach((f) => add(f, inf));
+      }
+    }
+    for (const [inf, forms] of Object.entries(ES_IRREG)) forms.split(" ").forEach((f) => { m[f] = inf; });
+    return m;
+  })();
+  const EN_VERB_LIST = "send email call schedule book prepare review quote share present confirm write contact follow draft deliver set organize research introduce check finish update get provide make look find arrange visit meet pay sign close fix build run prepare submit plan test compile gather circle reach connect".split(" ");
+  const EN_FORMS = (() => {
+    const m = {};
+    for (const v of EN_VERB_LIST) {
+      const ing = v.endsWith("e") && !v.endsWith("ee") ? v.slice(0, -1) + "ing" : /^(get|set|run|plan|put)$/.test(v) ? v + v.slice(-1) + "ing" : v + "ing";
+      m[ing] = v; m[v + "s"] = v;
+    }
+    m.writing = "write"; m.making = "make"; m.taking = "take";
+    return m;
+  })();
+  /** Pasa a infinitivo la primera palabra: "enviaré el deck" → "enviar el deck", "sending the deck" → "send the deck". */
+  function firstToInfinitive(text, lang) {
+    const m = /^([A-Za-zÁÉÍÓÚÑáéíóúñ]+)(.*)$/s.exec(text);
+    if (!m) return text;
+    const w = norm(m[1]);
+    const inf = (lang === "en" ? EN_FORMS : ES_FORMS)[w];
+    return inf ? inf + m[2] : text;
+  }
+
   /* =====================================================================
    * 4. PERFILES DE IDIOMA
    * ===================================================================== */
@@ -283,33 +327,51 @@
     ],
     pref: /\b(prefiere|le gusta|le gustan|le encanta|le encantan|no le gusta|odia|es fan|aficionad[oa]|su (?:hij[oa]s?|esposa|esposo|pareja|mujer|marido|familia|mama|papa|madre|padre|perro|gato|nieto|nieta)|cumple|cumpleanos|aniversario|juega|vegetarian[oa]|vegan[oa]|alergic[oa]|no toma|no bebe|toma cafe|vacaciones|hobby|pasatiempo|maraton|golf|futbol|beisbol|tenis|equipo favorito|se va a casar|tuvo un bebe|embarazad[oa]|se mudo|habla (?:ingles|frances|aleman))\b/,
     prefSplit: /;|,\s+y\s+|\s+y\s+(?=su\s|le\s|prefiere|es\s)|\.\s*/,
+    // Compromisos: cualquier forma de "comprometerse" (prometí, me comprometí, quedamos en, me pidió que, acordamos…).
+    // Tupla: [regex, grupoVerbo, esPetición]. grupoVerbo = el verbo conjugado del grupo 1 se pasa a infinitivo.
+    // esPetición = si lo que sigue es un sustantivo ("me pidió la propuesta"), se antepone "Enviar".
     mine: [
       [/\b(?:le |les )?prometi(?: que)?\s+/g],
-      [/\bme comprometi a\s+/g],
-      [/\bquede (?:en|de)\s+/g],
-      [/\btengo que\s+/g],
+      [/\b(?:yo )?me comprometi(?: con [a-z]+(?: [a-z]+)?)?(?: a| en)?(?: que)?\s+/g],
+      [/\b(?:nos comprometimos|quedamos comprometidos)(?: a| en)?(?: que)?\s+/g],
+      [/\b(?:mi |el |nuestro |un )?compromiso(?: es| fue| quedo)?(?: de| en| con [a-z]+ de)?(?::|\s+es)?\s+(?=[a-z])/g],
+      [/\bquede (?:con [a-z]+(?: [a-z]+)? )?(?:en|de)(?: que)?\s+/g],
+      [/\bquedamos (?:en|de)(?: que)?\s+/g],
+      [/\b(?:acordamos|acorde|convinimos|pactamos|nos pusimos de acuerdo en|nos comprometimos)(?: que| en| a)?\s+/g],
+      [/\b(?:me |nos )?(?:pidio|pidieron|solicito|solicitaron|encargo|encargaron|encomendo)(?: que)?\s+/g, false, true],
+      [/\b(?:yo )?me (?:encargo|hago cargo|ocupo|toca encargarme) de\s+/g],
+      [/\bme (?:ofreci|propuse) a\s+/g],
+      [/\b(?:le |les )?(?:asegure|garantice|confirme|dije) que\s+(?=(?:yo )?(?:le |les |lo |la )?[a-z]+(?:ia|re)\b)/g],
+      [/\btengo (?:que|pendiente)\s+/g],
+      [/\b(?:me falta|necesito)\s+/g],
       [/\b(?:le |les )?debo\s+/g],
       [/\b(?:le |les )?voy a\s+/g],
       [/\bme toca\s+/g],
       [/\bhay que\s+/g],
-      [/\b(?:me )?pidio(?: que)?\s+(?=(?:le |les |me )?(?:[a-z]+ar|[a-z]+er|[a-z]+ir)\b)/g],
-      [/\bpendiente(?: de)?:?\s+/g],
-      [/\b(?:le |les )(envio|mando|paso|preparo|comparto|llamo|escribo|confirmo|reviso|agendo)\s+/g, true],
+      [/\b(?:pendiente(?: de)?|tarea|to-?do|accion|siguiente paso):?\s+/g],
+      [/\b(?:le |les )(envio|mando|paso|preparo|comparto|llamo|escribo|confirmo|reviso|agendo|cotizo|aviso|consigo|busco|presento|marco|hago)\s+/g, true],
+      // futuro/condicional de 1.ª persona: "le enviaré", "prepararé", "le mandaría"
+      [/\b(?:le |les |lo |la |se lo |se la )?([a-z]+(?:are|ere|ire|aremos|eremos|iremos|aria|eria|iria))\s+/g, "form"],
     ],
     theirs: [
-      [/\b(?:el |ella |[a-z]+ )?quedo (?:en|de)\s+/g],
-      [/\bse comprometio a\s+/g],
+      [/\b(?:el |ella |[a-z]+ )?quedo (?:en|de)(?: que)?\s+/g],
+      [/\b(?:ellos |ellas )?quedaron (?:en|de)(?: que)?\s+/g],
+      [/\bse comprometio(?: conmigo| con nosotros)?(?: a| en)?(?: que)?\s+/g],
       [/\b(?:me |nos )?prometio(?: que)?\s+/g],
-      [/\bme va a\s+/g],
-      [/\b(?:me |nos )(envia|manda|pasa|comparte|confirma|avisa|dara|hara llegar|llama|escribe|revisa)\s+/g, true],
+      [/\b(?:me |nos )(?:va|van) a\s+/g],
+      [/\b(?:me |nos )(envia|manda|pasa|comparte|confirma|avisa|dara|hara llegar|llama|escribe|revisa|enviara|mandara|pasara|compartira|confirmara|avisara|llamara|escribira|revisara)\s+/g, true],
     ],
-    verbs: { envio: "enviar", mando: "mandar", paso: "pasar", preparo: "preparar", comparto: "compartir", llamo: "llamar", escribo: "escribir", confirmo: "confirmar", reviso: "revisar", agendo: "agendar", envia: "enviar", manda: "mandar", pasa: "pasar", comparte: "compartir", confirma: "confirmar", avisa: "avisar", dara: "dar", "hara llegar": "hacer llegar", llama: "llamar", escribe: "escribir", revisa: "revisar" },
+    verbs: { envio: "enviar", mando: "mandar", paso: "pasar", preparo: "preparar", comparto: "compartir", llamo: "llamar", escribo: "escribir", confirmo: "confirmar", reviso: "revisar", agendo: "agendar", cotizo: "cotizar", aviso: "avisar", consigo: "conseguir", busco: "buscar", presento: "presentar", marco: "marcar", hago: "hacer",
+      envia: "enviar", manda: "mandar", pasa: "pasar", comparte: "compartir", confirma: "confirmar", avisa: "avisar", dara: "dar", "hara llegar": "hacer llegar", llama: "llamar", escribe: "escribir", revisa: "revisar",
+      enviara: "enviar", mandara: "mandar", pasara: "pasar", compartira: "compartir", confirmara: "confirmar", avisara: "avisar", llamara: "llamar", escribira: "escribir", revisara: "revisar" },
+    requestVerb: "Enviar",
+    articles: /^(?:el|la|los|las|un|una|unos|unas|su|sus|mi|mis|nuestro|nuestra|dicho|dicha|este|esta|esos|esas)\s/i,
     actionVerbs: "enviar|mandar|llamar|agendar|preparar|revisar|cotizar|compartir|presentar|confirmar|escribir|contactar|programar|dar seguimiento|hacer seguimiento|buscar|conseguir|proponer|pasar|entregar|organizar|investigar",
-    promiseAny: /\b(prometi|quede en|quede de|tengo que|me comprometi|le envio|le mando|pendiente|quedo en|me envia|me pasa|me manda|me va a)\b/,
+    promiseAny: /\b(prometi|quede en|quede de|quedamos en|quedamos de|tengo que|me comprometi|nos comprometimos|compromiso|acordamos|me pidio|me encargo|le envio|le mando|pendiente|quedo en|se comprometio|me envia|me pasa|me manda|me va a)\b/,
     clauseCut: /;|\.\s|,\s+(?:pero|aunque|mientras)\b|\s+y\s+(?:el|ella|me|nos|yo|luego)\s/,
-    leadStrip: /^(?:que|le|les|a)\s+/i,
-    tailStrip: /\s+(?:el|la|para|antes del?|a más tardar|y)\s*$/i,
-    objectStrip: (t) => t.replace(/^([A-Za-zÁÉÍÓÚáéíóúñ]+(?:ar|er|ir))(?:le|les|lo|la|los|las)\b/, "$1"),
+    leadStrip: /^(?:(?:que|le|les|a|yo|me|nos|se lo|se la)\s+)+/i,
+    tailStrip: /(?:\s+(?:el|la|para|antes del?|a más tardar|y|de))+\s*$/i,
+    objectStrip: (t) => t.replace(/^([A-Za-zÁÉÍÓÚáéíóúñ]+(?:ar|er|ir))(?:le|les|lo|la|los|las|me|nos|te|se)\b/, "$1"),
     nameContext: ["con", "a", "para", "le", "visité a", "llamé a", "vi a", "hablé con", "escribí a"],
     honor: "(?:(?:[Ee]l|[Ll]a|[Dd]on|[Dd]oña|[Dd]ra?|[Ii]ng|[Ll]ic|[Ss]ra?|[Mm]tr[oa]|[Aa]rq|[Cc]\\.?[Pp])\\.?\\s+){0,2}",
     notNames: "lunes martes miercoles jueves viernes sabado domingo enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre hoy manana ayer grupo corporativo industrias el la los las su sus mi mis le les me nos yo usted comida llamada reunion junta cafe visita correo email whatsapp cfo ceo coo cto rrhh erp crm ia ok pendiente prometi quede tengo",
@@ -342,16 +404,26 @@
     pref: /\b(prefers?|likes|loves|doesn't like|does not like|hates|is a (?:big )?fan|(?:his|her|their) (?:son|daughter|sons|daughters|kids|children|wife|husband|partner|family|mom|dad|mother|father|dog|cat|grandson|granddaughter)|birthday|anniversary|plays|vegetarian|vegan|allergic|doesn't drink|does not drink|drinks coffee|vacation|holiday|hobby|marathon|golf|soccer|football|baseball|tennis|favorite team|getting married|had a baby|pregnant|moved to|speaks (?:spanish|french|german))\b/,
     prefSplit: /;|,\s+and\s+|\s+and\s+(?=his\s|her\s|their\s|he\s|she\s|prefers|loves|likes)|\.\s*/,
     mine: [
-      [/\bi (?:have |had )?promised(?: (?:to|that i'd|that i would|i'd|i would))?\s+/g],
-      [/\bi(?:'ve| have)? committed to\s+/g],
-      [/\bi agreed to\s+/g],
-      [/\bi (?:need|have|got|still need) to\s+/g],
-      [/\bi must\s+/g],
-      [/\bi(?:'ll| will| am going to|'m going to| shall| should)\s+/g],
-      [/\bwe(?:'ll| will| need to| have to| agreed to)\s+/g],
+      [/\bi (?:have |had |just )?promised(?: (?:him|her|them|you))?(?: (?:to|that i'd|that i would|i'd|i would))?\s+/g],
+      [/\bi(?:'ve| have| had)? committed(?: myself)?(?: to)?\s+/g],
+      [/\bi(?:'m| am) committed to\s+/g],
+      [/\bi (?:made|have) a commitment to\s+/g],
+      [/\b(?:my |our |the |a )?commitment(?: is| was)?(?: to)?(?::|\s+is)?\s+(?=[a-z])/g],
+      [/\b(?:i|we) agreed(?: to| that i'd| that i would| that we'd| on| that)?\s+/g],
+      [/\bwe (?:settled on|decided(?: to| that i'd| that i would)?)\s+/g],
+      [/\bi (?:said|told (?:him|her|them)) (?:that )?i(?:'d| would)\s+/g],
+      [/\bi (?:assured|guaranteed)(?: (?:him|her|them))?(?: that)?(?: i(?:'d| would))?\s+/g],
+      [/\bi (?:pledged|undertook|offered|volunteered) to\s+/g],
+      [/\bi(?:'m| am) (?:on the hook|responsible) for\s+/g, false, true],
+      [/\bi (?:need|have|got|still need|still have) to\s+/g],
+      [/\bi (?:must|should)\s+/g],
+      [/\bi(?:'ll| will| am going to|'m going to| shall)(?: make sure to| be sure to)?\s+/g],
+      [/\bwe(?:'ll| will| need to| have to| are going to|'re going to)\s+/g],
       [/\bi (owe) (?:him|her|them)\s+/g, true],
-      [/\b(?:he|she|they|[a-z]+) asked (?:me |us )?to\s+/g],
-      [/\b(?:to-?do|pending|follow[- ]up|action item):\s*/g],
+      [/\b(?:he|she|they|[a-z]+) (?:asked|requested|wants|wanted|needs|needed|expects) (?:me|us) to\s+/g],
+      [/\b(?:he|she|they|[a-z]+) asked (?:me |us )?for\s+/g, false, true],
+      [/\b(?:he|she|they) requested(?: that i)?\s+/g, false, true],
+      [/\b(?:to-?do|pending|follow[- ]up|action item|next steps?|commitment|task):\s*/g],
       [/^\s*(?:need|have) to\s+/g],
     ],
     theirs: [
@@ -360,16 +432,18 @@
     ],
     verbs: { owe: "send", sends: "send", shares: "share", emails: "email" },
     actionVerbs: "send|email|call|schedule|book|prepare|review|quote|share|present|confirm|write|contact|follow up|draft|deliver|set up|organize|research|introduce|check|finish|update",
-    promiseAny: /\b(i promised|i'll|i will|i need to|i have to|i must|i agreed|i committed|asked me to|he'll|she'll|they'll|he will|she will|they will|follow up)\b/,
+    promiseAny: /\b(i promised|i'll|i will|i need to|i have to|i must|i agreed|we agreed|i committed|commitment|asked me|i owe|he'll|she'll|they'll|he will|she will|they will|follow up)\b/,
+    requestVerb: "Send",
+    articles: /^(?:the|a|an|his|her|their|our|my|some|this|that|these|those)\s/i,
     clauseCut: /;|\.\s|,\s+(?:but|although|while)\b|\s+and\s+(?:he|she|they|i|we|then)\s/,
     leadStrip: /^(?:to|that)\s+/i,
-    tailStrip: /\s+(?:by|on|before|until|the|and|this|next|for)\s*$/i,
-    objectStrip: (t) => t.replace(/^([A-Za-z]+) (?:him|her|them) (?=\w)/, "$1 "),
+    tailStrip: /(?:\s+(?:by|on|before|until|the|and|this|next|for|no later than))+\s*$/i,
+    objectStrip: (t) => t.replace(/^(send|email|give|show|mail|text|forward|pass|get) (?:him|her|them) (?=\w)/i, "$1 "),
     nameContext: ["with", "to", "for", "called", "met", "emailed", "texted", "visited", "saw", "from"],
     honor: "(?:(?:Mr|Mrs|Ms|Miss|Dr|Prof|Eng)\\.?\\s+)?",
     notNames: "monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october november december today tomorrow yesterday i he she they we you the his her their my our lunch dinner call meeting coffee email whatsapp cfo ceo coo cto hr erp crm ai ok next this",
     companyAfter: "(?:from|at|of)",
-    companyCue: "\\b((?:[A-Z][\\w&.\\-]*\\s+){1,3}(?:Inc|LLC|Ltd|Corp|Corporation|Group|Industries|Holdings|Technologies|Labs|Systems|Partners|Co)\\.?|(?:Grupo|Group|Bank of)\\s+[A-Z][\\w&.\\-]*(?:\\s+[A-Z][\\w&.\\-]*){0,2})",
+    companyCue: "\\b((?:[A-Z][\\w&.\\-]*\\s+){1,3}(?:Inc|LLC|Ltd|Corp|Corporation|Group|Industries|Holdings|Technologies|Labs|Systems|Partners|Co)\\b\\.?|(?:Grupo|Group|Bank of)\\s+[A-Z][\\w&.\\-]*(?:\\s+[A-Z][\\w&.\\-]*){0,2})",
     companyGeneric: ["group", "inc", "llc", "ltd", "corp", "industries", "holdings"],
     role: "\\b(?:his|her|their)\\s+(cfo|ceo|coo|cto|director(?: of [a-z]+)?|(?:plant |general |sales |operations |finance )?manager|partner|boss|assistant|accountant|lawyer|brother|sister|wife|husband)",
     rolePrefix: "(?:his|her|their)\\s+\\w+(?:\\s+\\w+)?",
@@ -405,7 +479,7 @@
   function cleanAction(raw, dateSpan, L) {
     let s = raw;
     if (dateSpan) s = s.slice(0, dateSpan.start) + " " + s.slice(dateSpan.end);
-    s = s.replace(/\s+/g, " ").trim().replace(L.leadStrip, "").replace(L.tailStrip, "").replace(/[\s,.;:]+$/g, "").trim();
+    s = s.replace(/\s+/g, " ").trim().replace(L.leadStrip, "").replace(/[\s,.;:]+$/g, "").replace(L.tailStrip, "").replace(/[\s,.;:]+$/g, "").trim();
     if (s.length > 110) s = s.slice(0, 110).replace(/\s+\S*$/, "") + "…";
     return cap(s);
   }
@@ -417,18 +491,25 @@
       const n = norm(s);
       const hits = [];
       const collect = (list, owner) => {
-        for (const [re, verbGroup] of list) {
+        for (const [re, verbGroup, request] of list) {
           re.lastIndex = 0;
           let m;
           while ((m = re.exec(n))) {
-            hits.push({ start: m.index, end: m.index + m[0].length, owner, verb: verbGroup && m[1] ? L.verbs[m[1]] || null : null });
+            let verb = null;
+            if (verbGroup === "form") {
+              // futuro/condicional genérico: solo cuenta si es un verbo conocido
+              verb = ES_FORMS[m[1]] || null;
+              if (!verb) continue;
+            } else if (verbGroup && m[1]) verb = L.verbs[m[1]] || null;
+            hits.push({ start: m.index, end: m.index + m[0].length, owner, verb, request: !!request });
             if (!re.global) break;
           }
         }
       };
       collect(L.theirs, "client");
       collect(L.mine, "me");
-      const lead = new RegExp("^\\s*(" + L.actionVerbs + ")\\b").exec(n);
+      // Frase que empieza con un verbo de acción ("Enviar reporte hoy"), salvo "Call with…" / "Llamar con…", que describen la reunión.
+      const lead = new RegExp("^\\s*(" + L.actionVerbs + ")\\b(?!\\s+(?:with|con)\\b)").exec(n);
       if (lead && !hits.length) hits.push({ start: lead.index, end: lead.index, owner: "me", verb: null });
       if (!hits.length) continue;
 
@@ -444,11 +525,17 @@
         let date = L.parseDate(seg, now);
         let text = cleanAction(seg, date, L);
         if (!date) {
+          // Fecha antes del disparador ("En 3 días le mando…"), pero solo dentro de la misma cláusula.
           const prevEnd = i > 0 ? uniq[i - 1].end : 0;
-          date = L.parseDate(s.slice(prevEnd, h.start), now);
+          let pre = s.slice(prevEnd, h.start);
+          const parts = pre.split(/[;,.:]|\s(?:y|e|pero|and|but|then|luego)\s/i);
+          pre = parts[parts.length - 1];
+          date = L.parseDate(pre, now);
         }
+        text = cap(firstToInfinitive(text, L.code));
         text = L.objectStrip(text);
         if (h.verb) text = cap(h.verb + " " + text.charAt(0).toLowerCase() + text.slice(1));
+        else if (h.request && L.articles.test(text)) text = L.requestVerb + " " + text.charAt(0).toLowerCase() + text.slice(1);
         if (text.replace(/[^A-Za-zÁÉÍÓÚÑáéíóúñ]/g, "").length < 4) return;
         out.push({ text, due: date ? date.due : null, owner: h.owner });
       });

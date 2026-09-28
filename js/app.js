@@ -482,8 +482,8 @@ function highlight(s, q) {
 }
 
 /* ---------- búsqueda: texto + significado ---------- */
-const STOP = new Set(("que le lo la el los las de del a al en con por para mi me su sus un una y o cual cuando donde como hay tengo prometi pendiente pendientes promesa promesas debo quede " +
-  "what did do does i to the a an of with for my me is are have promised promise promises pending open owe owed about").split(" "));
+const STOP = new Set(("que le lo la el los las de del a al en con por para mi me su sus un una y o cual cuando donde como hay tengo prometi pendiente pendientes promesa promesas debo quede quedamos compromiso compromisos comprometi acordamos " +
+  "what did do does i to the a an of with for my me is are have promised promise promises commitment commitments committed agreed pending open owe owed about").split(" "));
 let searchSeq = 0;
 function renderSearch() {
   const q = $("q").value.trim();
@@ -500,7 +500,7 @@ function renderSearch() {
   }
   const nq = norm(q);
   // Intención "¿qué le prometí a Juan?" / "what did I promise John?": pendientes de ese cliente
-  const askPromises = /promet|pendient|debo|quede|compromet|promis|owe|pending|open with/.test(nq);
+  const askPromises = /promet|pendient|debo|quede|quedamos|compromet|compromis|acord|promis|commit|agreed|owe|pending|open with/.test(nq);
   const nameTokens = nq.split(/[^a-z0-9ñ]+/).filter((x) => x.length > 2 && !STOP.has(x));
   const clientFor = askPromises ? [...S.clients.values()].find((c) => norm(c.name).split(/\s+/).some((w) => nameTokens.includes(w))) : null;
 
