@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2340C9">
+<title>Memoria CRM</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body class="nav4">
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Memoria<span>.</span></h1>
+    <div class="top-right">
+      <div class="langsw" role="group" data-i18n-aria="lang.switch" aria-label="Idioma de la interfaz">
+        <button type="button" data-lang="es" lang="es" title="Español">ES</button>
+        <button type="button" data-lang="en" lang="en" title="English">EN</button>
+      </div>
+      <div class="status" id="status" data-i18n="app.opening">Abriendo…</div>
+    </div>
+  </header>
+
+  <!-- CAPTURAR -->
+  <section id="v-capture" class="stack">
+    <form class="capture" id="capForm">
+      <label for="capText" data-i18n="cap.label">¿Qué recuerdas de esta conversación?</label>
+      <textarea id="capText" data-i18n-ph="cap.placeholder"></textarea>
+      <div class="cap-foot">
+        <span class="hint" id="capHint"></span>
+        <div class="cap-actions">
+          <button type="button" class="link" id="exampleBtn" data-i18n="cap.example">Probar un ejemplo</button>
+          <button type="submit" class="btn" id="saveBtn" data-i18n="cap.save">Guardar</button>
+        </div>
+      </div>
+    </form>
+    <div id="capResult"></div>
+    <div id="capIntro"></div>
+    <div class="sec">
+      <div class="sec-head"><h2 data-i18n="sec.pending">Promesas pendientes</h2><span class="count" id="pendCount"></span></div>
+      <div id="pendList"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-head"><h2 data-i18n="sec.recent">Últimas capturas</h2><span class="count" id="recentCount"></span></div>
+      <div id="recentList"></div>
+    </div>
+  </section>
+
+  <!-- CLIENTES -->
+  <section id="v-clients" class="stack" hidden>
+    <div class="sec">
+      <div class="sec-head"><h2 data-i18n="cl.title">Clientes</h2><span class="count" id="clientCount"></span></div>
+      <div id="clientList"></div>
+    </div>
+  </section>
+
+  <!-- FICHA -->
+  <section id="v-client" class="stack" hidden></section>
+
+  <!-- BUSCAR -->
+  <section id="v-search" class="stack" hidden>
+    <div class="search-box">
+      <input type="search" id="q" data-i18n-ph="se.placeholder" autocomplete="off">
+    </div>
+    <div id="searchOut"></div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="v-settings" class="stack" hidden>
+    <div class="sec">
+      <h2 data-i18n="st.language">Idioma</h2>
+      <div class="card">
+        <p data-i18n="st.languageText"></p>
+        <div class="langsw big" role="group" data-i18n-aria="lang.switch">
+          <button type="button" data-lang="es" lang="es">Español</button>
+          <button type="button" data-lang="en" lang="en">English</button>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2 data-i18n="st.ai">Inteligencia artificial local</h2>
+      <div class="card" id="iaCard"></div>
+    </div>
+    <div class="sec">
+      <h2 data-i18n="st.data">Tus datos</h2>
+      <div class="card">
+        <p id="storeInfo"></p>
+        <div class="row-actions">
+          <button class="btn-ghost" id="exportBtn" data-i18n="st.export">Descargar respaldo (.json)</button>
+          <label class="btn-ghost" for="importFile" style="cursor:pointer" data-i18n="st.import">Restaurar respaldo…</label>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+        <div id="importMsg" class="hint"></div>
+        <div class="confirm" id="wipeBox"></div>
+      </div>
+    </div>
+    <div class="sec">
+      <h2 data-i18n="st.about">Acerca de</h2>
+      <div class="card"><p data-i18n-html="st.aboutText"></p></div>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" data-i18n-aria="tab.capture" aria-label="Secciones">
+  <div class="in">
+    <button data-tab="capture" aria-current="page"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span data-i18n="tab.capture">Capturar</span></button>
+    <button data-tab="clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.8a3.3 3.3 0 0 1 0 6.4"/><path d="M18.5 14.8c1.6.8 2.6 2.6 3 5.2"/></svg><span data-i18n="tab.clients">Clientes</span></button>
+    <button data-tab="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><span data-i18n="tab.search">Buscar</span></button>
+    <button data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg><span data-i18n="tab.settings">Ajustes</span></button>
+  </div>
+</nav>
+<div class="toast" id="toast" hidden></div>
+
+<script src="js/i18n.js"></script>
+<script src="js/nlp.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

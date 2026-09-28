@@ -1,0 +1,8 @@
+# Los modelos de IA (≈300 MB) no se suben a GitHub: superan el límite de 100 MB
+# por archivo. La app los descarga sola la primera vez y los guarda en el navegador.
+modelos/**/*
+!modelos/LEEME.txt
+*.part
+.DS_Store
+Thumbs.db
+__pycache__/

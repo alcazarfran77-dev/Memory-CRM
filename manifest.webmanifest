@@ -1,0 +1,12 @@
+{
+  "name": "Memoria CRM",
+  "short_name": "Memoria",
+  "description": "CRM ultraliviano con memoria. Funciona sin conexión.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ECEEF1",
+  "theme_color": "#2340C9",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
